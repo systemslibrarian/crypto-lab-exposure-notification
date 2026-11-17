@@ -208,7 +208,7 @@ npm test             # 146 unit tests, including every spec KAT
 npm run mutate       # 12 mutations; a survivor fails the run
 npm run build        # typecheck (src and e2e) then the production build
 npm run test:a11y    # the axe WCAG 2.1 A/AA gate, against the built site
-npm run test:claims  # 37 claims tests, including the negative claim
+npm run test:claims  # 38 claims tests, including the negative claim
 ```
 
 ## Related Demos
@@ -230,7 +230,7 @@ one explicitly leaves out.
 
 ## Build & Verify
 
-**Tests: 146 unit (Vitest) + 39 browser (Playwright) = 185.** All run in CI, and every one of
+**Tests: 146 unit (Vitest) + 40 browser (Playwright) = 186.** All run in CI, and every one of
 them gates the deploy.
 
 Known-answer tests, in `src/crypto/primitives.test.ts`:
@@ -285,6 +285,13 @@ All 12 are killed. Three of them survived their first run, and each survival was
 fixed in the source: one patched provably dead code, one accidentally reimplemented the
 function it replaced, and one revealed that no test could tell "the same place at the same
 time" from "the same place ever".
+
+The runner also cleans up after itself in two ways that are easy to miss. It writes the
+original bytes to a breadcrumb file before patching, so a run killed outright leaves something
+the next run can recover from rather than a stranded mutation that reads as ordinary source.
+And it deletes `dist/` when it finishes, because a UI mutation's oracle is a Playwright run
+and Playwright builds before it serves — so the last build on disk came from mutated source,
+and the next `vite preview` would happily serve it.
 
 **The negative claim** is tested, not merely printed. The claim —
 
