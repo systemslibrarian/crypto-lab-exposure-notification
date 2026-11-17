@@ -1,22 +1,25 @@
 {
   "compilerOptions": {
     "target": "ES2022",
-    "useDefineForClassFields": true,
     "module": "ESNext",
-    "lib": ["ES2022", "DOM", "DOM.Iterable"],
-    "skipLibCheck": true,
     "moduleResolution": "bundler",
-    "allowImportingTsExtensions": true,
-    "resolveJsonModule": true,
-    "isolatedModules": true,
-    "noEmit": true,
+    "lib": ["ES2022", "DOM", "DOM.Iterable"],
     "strict": true,
     "noUnusedLocals": true,
     "noUnusedParameters": true,
     "noFallthroughCasesInSwitch": true,
+    "noImplicitReturns": true,
+    "esModuleInterop": true,
+    "skipLibCheck": true,
+    "isolatedModules": true,
+    "noEmit": true,
+    // These two are stricter than the fleet default and are kept because the
+    // crypto path is full of fixed-length byte arrays: an out-of-range index
+    // silently returning undefined is exactly the bug class that would make a
+    // 16-byte identifier 15 bytes long without anything complaining.
     "exactOptionalPropertyTypes": true,
     "noUncheckedIndexedAccess": true,
     "types": ["vite/client", "node"]
   },
-  "include": ["src", "e2e", "scripts", "vite.config.ts", "playwright.config.ts"]
+  "include": ["src", "vite.config.ts", "playwright.config.ts", "scripts"]
 }
