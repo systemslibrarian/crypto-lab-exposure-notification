@@ -596,6 +596,32 @@ test.describe('the negative claim', () => {
     await expect(page.locator('#ex4-verdict')).toContainText('EXPOSURE MATCHED');
   });
 
+  test('the attacker\u2019s rebroadcasts are visible in the on-air table', async ({ page }) => {
+    await boot(page, 'dark');
+    await openTab(page, /Relay/, '#panel-relay');
+    // The table is a ten-row window on the air. With the relay live, some of
+    // those rows must be the attacker's, or the exhibit shows only honest
+    // traffic and the reader never sees the rebroadcast at all.
+    const owners = await page
+      .locator('#panel-relay table')
+      .last()
+      .locator('tbody tr td:last-child .tag')
+      .evaluateAll((els) => els.map((e) => e.textContent ?? ''));
+    expect(owners.length).toBeGreaterThan(0);
+    expect(owners).toContain('THE ATTACKER');
+    expect(owners.some((o) => o.startsWith('PHONE'))).toBe(true);
+
+    // And with the relay off there are none, because nothing is relayed.
+    await page.locator('#ex4-relay').click();
+    await expect(page.locator('#ex4-relay')).toHaveAttribute('aria-pressed', 'false');
+    const off = await page
+      .locator('#panel-relay table')
+      .last()
+      .locator('tbody tr td:last-child .tag')
+      .evaluateAll((els) => els.map((e) => e.textContent ?? ''));
+    expect(off).not.toContain('THE ATTACKER');
+  });
+
   test('3. the limitation is visible on screen in that state, not behind a disclosure', async ({
     page,
   }) => {

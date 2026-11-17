@@ -139,7 +139,12 @@ export async function render(host: HTMLElement): Promise<void> {
     ]),
   ])
   const airBody = el('tbody')
-  for (const b of broadcasts.slice(0, 10)) {
+  // Sorted by slot, so each slot's honest broadcasts and the attacker's
+  // rebroadcast of them sit together. Unsorted, the relayed copies are appended
+  // after every honest one and a ten-row window never shows a single
+  // "THE ATTACKER" row — which is the one thing this table exists to show.
+  const air = [...broadcasts].sort((x, y) => x.at - y.at || Number(x.relayed) - Number(y.relayed))
+  for (const b of air.slice(0, 10)) {
     airBody.append(
       el('tr', {}, [
         el('th', { scope: 'row', class: 'num', text: String(b.at) }),

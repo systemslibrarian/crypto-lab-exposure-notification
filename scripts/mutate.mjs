@@ -84,12 +84,34 @@ function recoverStrandedMutation() {
 function run(cmd, args, env) {
   const r = spawnSync(cmd, args, {
     encoding: 'utf8',
-    env: { ...process.env, ...env },
+    // NO_COLOR / FORCE_COLOR ask the runners not to emit escape sequences, and
+    // `stripAnsi` removes the ones that arrive anyway. Both, because the first
+    // is a request and the second is a guarantee.
+    env: { ...process.env, NO_COLOR: '1', FORCE_COLOR: '0', ...env },
     timeout: 900_000,
     maxBuffer: 64 * 1024 * 1024,
   })
-  const out = `${r.stdout ?? ''}${r.stderr ?? ''}`
+  const out = stripAnsi(`${r.stdout ?? ''}${r.stderr ?? ''}`)
   return { ok: r.status === 0, out }
+}
+
+/** The ESC byte, spelled rather than typed, so this file stays printable. */
+const ESC = String.fromCharCode(27)
+const ANSI = new RegExp(`${ESC}\\[[0-9;]*[A-Za-z]`, 'g')
+
+/**
+ * Remove ANSI escape sequences before anything is parsed.
+ *
+ * CI prints the Vitest summary with colour codes BETWEEN the label and the
+ * number, so a pattern anchored on "Tests" followed by digits finds nothing,
+ * `countTests` returns 0, and this script concludes the suite did not run and
+ * refuses to continue. That is the right instinct on the wrong evidence: it
+ * failed a CI run that had 146 green tests in the log immediately above the
+ * refusal. Locally the output is a TTY-less pipe and arrives clean, which is
+ * why it only ever showed up in CI.
+ */
+function stripAnsi(text) {
+  return text.replace(ANSI, '')
 }
 
 const typecheck = () => run('npx', ['tsc', '--noEmit'])
@@ -258,6 +280,28 @@ for (const m of selected) {
     rmSync(BREADCRUMB, { force: true })
   }
 }
+
+/**
+ * Remove dist/ before reporting.
+ *
+ * A UI mutation's owning suite is a Playwright run, and Playwright's webServer
+ * command BUILDS before it serves — so the last thing a mutated run leaves on
+ * disk is a bundle compiled from mutated source. Restoring the source file does
+ * not undo that, and the next `vite preview` happily serves it: this was caught
+ * by eye, on a screenshot where exhibit 4's verdict read "EXPOSURE MATCHED —
+ * AND THEY REALLY WERE TOGETHER" above "shared a place in 0 of 30 slots", which
+ * is mutation 11 rendering exactly as designed in a bundle nobody meant to run.
+ *
+ * Deleting is better than rebuilding: an absent dist/ is unambiguous, and every
+ * path that needs one (preview, the a11y gate, the deploy) builds it first.
+ *
+ * In CI this is belt and braces - the ledger runs in browser-gate, which never
+ * uploads a Pages artifact, and the build job that does upload is a separate
+ * job with its own checkout. Nothing mutated could have shipped. On a developer
+ * machine there is no such separation, which is where it bit.
+ */
+rmSync('dist', { recursive: true, force: true })
+console.log('Removed dist/ — the last build in it came from mutated source.\n')
 
 console.log('='.repeat(78))
 const killed = results.filter((r) => r.verdict === 'KILLED')
