@@ -178,6 +178,33 @@ test.describe('exhibit 1 — the key schedule on screen is the specification’s
     await expect(page.locator('#ex1-tek-hint')).toContainText('not 0-9');
   });
 
+  test('an UNALIGNED start interval is refused, and nothing is derived', async ({ page }) => {
+    await boot(page, 'dark');
+    // 2650033 is one past a multiple of 144. The specification rolls every
+    // device's key at a multiple of TEKRollingPeriod, so this is not a key any
+    // phone would have had.
+    await page.locator('#ex1-start').fill('2650033');
+    await page.locator('#ex1-start').blur();
+
+    const v = page.locator('#ex1-verdict');
+    await expect(v).toHaveAttribute('data-verdict', 'refused');
+    await expect(v).toContainText('NOTHING WAS DERIVED');
+    await expect(v).toContainText('not a multiple of TEKRollingPeriod');
+    // It names the interval it should have been, computed rather than asserted.
+    expect(2650033 - (2650033 % 144)).toBe(2650032);
+    await expect(v).toContainText('2650032');
+
+    // And no schedule is on screen: not a rounded one, not a stale one.
+    await expect(page.locator('#panel-schedule .id-chip')).toHaveCount(0);
+    await expect(page.locator('#panel-schedule .byte-cell')).toHaveCount(0);
+    await expect(page.locator('#panel-schedule .hex-block')).toHaveCount(0);
+
+    // Aligning it recovers the full day.
+    await page.locator('#ex1-align').click();
+    await expect(page.locator('#panel-schedule .id-chip')).toHaveCount(144);
+    await expect(page.locator('#ex1-start')).toHaveValue('2650032');
+  });
+
   test('a key of the wrong LENGTH is refused, naming the length rule', async ({ page }) => {
     await boot(page, 'dark');
     await page.locator('#ex1-tek').fill('00112233');

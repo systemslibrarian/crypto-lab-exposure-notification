@@ -59,7 +59,10 @@ describes what any country's app actually did.
 1. **One phone, one day (Apple/Google).** One 16-byte key, two HKDF calls, and the day's 144
    identifiers. The padded AES block is drawn byte by byte with the four interval bytes picked
    out, so "little-endian" is something you can check rather than something the page asserts.
-   AEMK and one encrypted metadata value are derived alongside.
+   AEMK and one encrypted metadata value are derived alongside. Set the key's
+   start interval to something that is not a multiple of 144 and the whole panel
+   becomes a refusal that names the interval it should have been — nothing is
+   derived, and nothing is quietly rounded.
 2. **One phone, several days (DP-3T low-cost).** The hash chain across three days, the PRF
    step, the day's 96 identifiers, and the random broadcast order shown against the generation
    order — the full 96-element permutation is published in the DOM so the claim is checkable.
@@ -205,7 +208,7 @@ npm test             # 146 unit tests, including every spec KAT
 npm run mutate       # 12 mutations; a survivor fails the run
 npm run build        # typecheck (src and e2e) then the production build
 npm run test:a11y    # the axe WCAG 2.1 A/AA gate, against the built site
-npm run test:claims  # 36 claims tests, including the negative claim
+npm run test:claims  # 37 claims tests, including the negative claim
 ```
 
 ## Related Demos
@@ -227,7 +230,7 @@ one explicitly leaves out.
 
 ## Build & Verify
 
-**Tests: 146 unit (Vitest) + 38 browser (Playwright) = 184.** All run in CI, and every one of
+**Tests: 146 unit (Vitest) + 39 browser (Playwright) = 185.** All run in CI, and every one of
 them gates the deploy.
 
 Known-answer tests, in `src/crypto/primitives.test.ts`:
@@ -266,7 +269,7 @@ consistently wrong fails.
 
 **The accessibility gate** (`npm run build && npm run test:a11y`) scans the production build
 with `@axe-core/playwright` for zero WCAG 2.1 A/AA violations, at 1280px and 380px, across
-about 45 driven states — every exhibit, every verdict tone, every refusal, two focus rings and
+about 47 driven states — every exhibit, every verdict tone, every refusal, two focus rings and
 three hover states. It asserts axe's `incomplete` bucket as well as `violations`, computes
 contrast arithmetically alongside axe (including inside `aria-hidden` content), measures
 non-text contrast per border side against a ratchet whose baseline file is **empty**, and

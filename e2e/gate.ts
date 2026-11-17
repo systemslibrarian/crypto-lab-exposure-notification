@@ -775,6 +775,20 @@ export async function driveAllStates(page: Page, theme: string): Promise<void> {
   await expect(page.locator('#ex1-tek')).toHaveAttribute('aria-invalid', 'true');
   await scanAt('exhibit 1 refusing a short key');
 
+  // An unaligned key start interval: the whole panel becomes a refusal, which
+  // is a verdict tone and a layout the gate would otherwise never see.
+  await page.locator('#ex1-vector').click();
+  await page.locator('#ex1-start').fill('2650033');
+  await page.locator('#ex1-start').blur();
+  await expect(page.locator('#ex1-verdict')).toHaveAttribute('data-verdict', 'refused');
+  await expect(page.locator('#ex1-start')).toHaveAttribute('aria-invalid', 'true');
+  await scanAt('exhibit 1 refusing an unaligned key start interval');
+
+  await page.locator('#ex1-align').click();
+  await expect(page.locator('#ex1-verdict')).toHaveCount(0);
+  await expect(page.locator('#panel-schedule .id-chip')).toHaveCount(144);
+  await scanAt('exhibit 1 recovered by aligning the start interval');
+
   // Back to the vector, and a different interval so the byte grid repaints
   // with different interval bytes.
   await page.locator('#ex1-vector').click();
