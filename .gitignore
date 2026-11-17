@@ -5,3 +5,4 @@ playwright-report/
 chat.md
 .DS_Store
 public/deployment.json
+.mutation-in-progress.json

@@ -45,13 +45,6 @@ jobs:
       - name: Unit tests (Vitest - RFC 5869, FIPS 197, SP 800-38A and both fixed schedules)
         run: npm test
 
-      - name: Prove the tests bite (12 mutations, each a concrete patch)
-        # Master template 4.1c. A surviving mutation fails this step, so a
-        # change that quietly removes a test's teeth cannot reach the site.
-        # The runner restores every file it patches and verifies the
-        # restoration, so a mutated tree cannot be what gets built below.
-        run: npm run mutate
-
       - name: Build (typecheck gates the build)
         run: npm run build
 
@@ -65,25 +58,36 @@ jobs:
         with:
           path: dist
 
-  # The image carries the exact browser binaries and Linux libraries expected
-  # by Playwright 1.64.0. Pin the multi-architecture manifest by digest so the
-  # rendering/runtime environment cannot drift under an unchanged commit.
+  # Browsers are installed IN THE JOB rather than baked into a pinned container
+  # image, which is what the master template prescribes
+  # (`npx playwright install --with-deps chromium`) and what the first CI run
+  # here argued for: the image was pinned to v1.64.0-noble while
+  # `@playwright/test: ^1.64.0` resolved to 1.65.1, and every browser test
+  # failed with "Executable doesn't exist ... Please update docker image as
+  # well." Installing from the resolved package can never disagree with it, and
+  # it removes a coupling Dependabot cannot see (it bumps the npm range; it does
+  # not rewrite a `container.image` digest).
+  #
+  # Chromium only, because both Playwright projects in playwright.config.ts run
+  # on Desktop Chrome: the a11y gate is deliberately single-engine so it is
+  # deterministic, and the claims suite asserts what the page SAYS, which does
+  # not vary by engine.
   #
   # This job runs BOTH browser suites, and the distinction matters: test:a11y
   # alone would leave the claims suite - which is what checks the page tells the
   # truth, including the negative claim - out of the gate entirely. A 2026-08-14
   # sweep found 29 repos whose deploy job ran the a11y half only.
+  #
+  # It also runs the mutation ledger, because that is the only job with both
+  # runners available. Mutation 11 is a patch to the page whose oracle is the
+  # claims suite, so a build job without browsers records it as OWNER-NOT-GREEN
+  # rather than as a kill - which is the runner refusing to credit a result it
+  # could not obtain, and is exactly what happened on the first run here.
   browser-gate:
     runs-on: ubuntu-latest
     timeout-minutes: 45
     permissions:
       contents: read
-    container:
-      image: mcr.microsoft.com/playwright:v1.64.0-noble@sha256:06a9939e57531807f8d5fd76ce44b53165ffb7d7501d87ab10e285c20b1e971f
-      options: --ipc=host
-    env:
-      # The Actions runner mounts a HOME that Firefox cannot use in-container.
-      HOME: /root
     steps:
       - name: Checkout
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
@@ -99,8 +103,17 @@ jobs:
       - name: Install dependencies exactly from the lockfile
         run: npm ci
 
+      - name: Install the browser the resolved Playwright expects
+        run: npx playwright install --with-deps chromium
+
       - name: Browser gate (axe WCAG A/AA, and the claims suite)
         run: npm run test:e2e:all
+
+      - name: Prove the tests bite (12 mutations, each a concrete patch)
+        # Master template 4.1c. A surviving mutation fails this step, so a
+        # change that quietly removes a test's teeth cannot reach the site. The
+        # runner restores every file it patches and verifies the restoration.
+        run: npm run mutate
 
   deploy:
     needs: [build, browser-gate]

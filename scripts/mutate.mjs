@@ -27,8 +27,8 @@
  * answer the runner can recompute is a second place for it to go wrong.
  */
 
-import { execFileSync } from 'node:child_process'
-import { readFileSync, writeFileSync } from 'node:fs'
+import { spawnSync } from 'node:child_process'
+import { existsSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
 import { createHash } from 'node:crypto'
 import { MUTATIONS } from './mutations.mjs'
 
@@ -37,19 +37,59 @@ const selected = only.length > 0 ? MUTATIONS.filter((m) => only.includes(m.id)) 
 
 const sha = (s) => createHash('sha256').update(s).digest('hex').slice(0, 12)
 
-/** Run a command, returning its combined output and exit status. */
-function run(cmd, args, env) {
-  try {
-    const stdout = execFileSync(cmd, args, {
-      encoding: 'utf8',
-      stdio: ['ignore', 'pipe', 'pipe'],
-      env: { ...process.env, ...env },
-      timeout: 600_000,
-    })
-    return { ok: true, out: stdout }
-  } catch (err) {
-    return { ok: false, out: `${err.stdout ?? ''}${err.stderr ?? ''}` }
+/**
+ * The crash breadcrumb.
+ *
+ * The `finally` that restores each file does not run if the process is killed
+ * outright — `kill -9`, a closed terminal, a dead session — and a stranded
+ * mutation then looks like ordinary source. That has happened here: a duplicate
+ * run was killed mid-check and left `utf8('EN-RPI')` where the RPIK info string
+ * belongs, which is a silent, plausible, test-failing lie in the file.
+ *
+ * So the original bytes are written to disk BEFORE the patch and removed after
+ * the restore. A run that finds one refuses to start, puts the file back, and
+ * says what it did. Master template 4.1c's "commit the real work before
+ * mutating" is still the first line of defence; this is the second.
+ */
+const BREADCRUMB = '.mutation-in-progress.json'
+
+function recoverStrandedMutation() {
+  if (!existsSync(BREADCRUMB)) return
+  const saved = JSON.parse(readFileSync(BREADCRUMB, 'utf8'))
+  const current = existsSync(saved.file) ? readFileSync(saved.file, 'utf8') : ''
+  if (current === saved.original) {
+    console.log(`Found a breadcrumb for ${saved.file}; it is already unmutated. Clearing it.`)
+  } else {
+    writeFileSync(saved.file, saved.original)
+    console.error(
+      `RECOVERED A STRANDED MUTATION: ${saved.file} was left patched by mutation ` +
+        `${saved.id} (a previous run was killed before it could restore). ` +
+        `The original bytes have been written back. Re-run, and check nothing else was lost.`,
+    )
   }
+  rmSync(BREADCRUMB)
+}
+
+/** Run a command, returning its combined output and exit status. */
+/**
+ * Run a command, returning BOTH streams and the exit status.
+ *
+ * stdout and stderr are both captured, always. The first CI run here read
+ * stdout only and so missed Vitest's summary line, which a non-TTY run writes
+ * to stderr — so `countTests` fell through to a looser pattern and reported
+ * "1 tests green unmutated" for a 30-test file. The count is a gate (4.1e: a
+ * step that runs zero tests exits 0), so reading it from the wrong stream
+ * quietly weakened the gate rather than breaking it.
+ */
+function run(cmd, args, env) {
+  const r = spawnSync(cmd, args, {
+    encoding: 'utf8',
+    env: { ...process.env, ...env },
+    timeout: 900_000,
+    maxBuffer: 64 * 1024 * 1024,
+  })
+  const out = `${r.stdout ?? ''}${r.stderr ?? ''}`
+  return { ok: r.status === 0, out }
 }
 
 const typecheck = () => run('npx', ['tsc', '--noEmit'])
@@ -98,15 +138,26 @@ function classify(out) {
 }
 
 /** How many tests ran, so a step that ran zero cannot read as a pass (4.1e). */
+/**
+ * How many tests ran. Master template 4.1e: a step that runs zero tests exits
+ * 0, so the count is asserted rather than the exit code alone.
+ *
+ * Vitest's `Tests  N passed` is tried first and anchored to that label, so the
+ * neighbouring `Test Files  1 passed` line cannot be mistaken for it. The
+ * Playwright fallback is anchored to the start of its summary line for the
+ * same reason.
+ */
 function countTests(out) {
-  const vit = out.match(/Tests\s+(\d+) passed/)
+  const vit = out.match(/^\s*Tests\s+(\d+) passed/m)
   if (vit) return Number(vit[1])
-  const pw = out.match(/(\d+) passed/)
+  const pw = out.match(/^\s*(\d+) passed/m)
   return pw ? Number(pw[1]) : 0
 }
 
 console.log('Mutation run —', new Date().toISOString())
 console.log('='.repeat(78))
+
+recoverStrandedMutation()
 
 // ── Rule 1, for the whole run: the suite is green before anything is touched ──
 const baseline = run('npx', ['vitest', 'run', '--reporter=default'])
@@ -148,6 +199,9 @@ for (const m of selected) {
     continue
   }
 
+  // Breadcrumb first, patch second. The other order leaves a window in which a
+  // kill strands the mutation with nothing on disk to recover it from.
+  writeFileSync(BREADCRUMB, JSON.stringify({ id: m.id, file: m.file, original }))
   writeFileSync(m.file, mutated)
   try {
     const before = sha(original)
@@ -201,6 +255,7 @@ for (const m of selected) {
       console.error(`FATAL: ${m.file} was not restored. Fix it by hand before committing.`)
       process.exit(3)
     }
+    rmSync(BREADCRUMB, { force: true })
   }
 }
 
