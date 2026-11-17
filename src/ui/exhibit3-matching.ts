@@ -98,8 +98,13 @@ function timelineTable(design: Design, host: HTMLElement): HTMLElement {
       }
       select.addEventListener('change', () => {
         const row2 = state.places[phone.id]
-        if (row2) row2[at] = select.value
-        // Editing the timeline retires any verdict computed from the old one.
+        // NO-OP GUARD. Re-picking the value the control already holds changes
+        // nothing about the world, so it must not retire a fresh verdict —
+        // and a driven `change` event fires whether or not the value moved.
+        if (!row2 || row2[at] === select.value) return
+        row2[at] = select.value
+        // A real edit DOES retire every verdict: they were computed from the
+        // timeline that just stopped being true.
         state.reported = false
         void render(host)
       })
@@ -201,6 +206,7 @@ export async function render(host: HTMLElement): Promise<void> {
     designSelect.append(el('option', { value: d.id, selected: d.id === state.designId, text: d.label }))
   }
   designSelect.addEventListener('change', () => {
+    if (designSelect.value === state.designId) return
     state.designId = designSelect.value as DesignId
     state.reported = false
     state.keys = null
@@ -212,6 +218,7 @@ export async function render(host: HTMLElement): Promise<void> {
     reporterSelect.append(el('option', { value: p.id, selected: p.id === state.reporter, text: p.label }))
   }
   reporterSelect.addEventListener('change', () => {
+    if (reporterSelect.value === state.reporter) return
     state.reporter = reporterSelect.value
     state.reported = false
     void render(host)

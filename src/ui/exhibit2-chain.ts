@@ -247,8 +247,15 @@ export async function render(host: HTMLElement): Promise<void> {
     ),
   )
 
-  // Prove the identity the exhibit claims, in the DOM, for the claims suite:
-  // day d's seed really is SHA-256 applied d times to day 0's.
+  // Three identities the exhibit CLAIMS, published in the DOM so the claims
+  // suite can check them rather than take the prose's word:
+  //   - day 1's seed really is SHA-256 of day 0's;
+  //   - the broadcast order is a permutation of the generated identifiers —
+  //     the full 96, not just the eight rows there is room to render;
+  //   - and the generated sequence itself, to compare against.
+  const body = host.querySelector('.panel-body')
   const check = await advanceSeed(chain[0] as Uint8Array)
-  host.querySelector('.panel-body')?.setAttribute('data-chain-day1', toHex(check))
+  body?.setAttribute('data-chain-day1', toHex(check))
+  body?.setAttribute('data-generation-order', idHex.join(','))
+  body?.setAttribute('data-broadcast-order', order.join(','))
 }

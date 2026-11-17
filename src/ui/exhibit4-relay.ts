@@ -194,7 +194,7 @@ export async function render(host: HTMLElement): Promise<void> {
       el('span', {}, [
         el('strong', { text: NEGATIVE_CLAIM }),
         el('br'),
-        `The world record for this scenario: phone A and phone B were at the same place in ${sharedSlots.length} of the timeline's ${world.slots.length} slots. A stood on Platform 4 throughout; B was in the Rooftop bar throughout.`,
+        `The world record for this scenario: phone A and phone B were at the same place in ${sharedSlots.length} of the timeline\u2019s ${world.slots.length} slots. A stood on Platform 4 throughout; B was in the Rooftop bar throughout.`,
       ]),
       { id: 'ex4-verdict' },
     )
