@@ -61,15 +61,22 @@ export async function render(host: HTMLElement): Promise<void> {
   })
   const { world, broadcasts } = scenario
 
-  // GROUND TRUTH, from the presence record. Never from the matcher.
-  const together = wereColocated(world, 'A', 'B')
-  const sharedSlots = colocatedSlots(world, 'A', 'B')
-
+  // First, what the PHONE concluded. It is handed its own log and the published
+  // report, and nothing else.
   const bLog = heardBy(world, 'B', broadcasts)
   const a = world.phones.find((p) => p.id === 'A')
   const published = a ? design.publish(a.keys, 0, world.days) : null
   const result = published ? await matchLog(design, bLog, published, world.days) : null
   const exposed = result ? exposureVerdict(result) === 'exposure' : false
+
+  // Then, SEPARATELY, what the world says. `wereColocated` reads
+  // `world.presence` and nothing else — it is not given `result`, and writing
+  // `const together = exposed` here instead would turn the verdict's
+  // "never near each other" clause into a restatement of the match. That
+  // substitution is mutation 11, and the claims suite's
+  // "BITE: the clause tracks the WORLD" test is what refuses it.
+  const together = wereColocated(world, 'A', 'B')
+  const sharedSlots = colocatedSlots(world, 'A', 'B')
 
   // ── controls ──────────────────────────────────────────────────────────────
   const relayBtn = el('button', {

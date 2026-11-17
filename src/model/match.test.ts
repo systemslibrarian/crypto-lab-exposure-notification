@@ -7,7 +7,7 @@
  */
 import { describe, expect, it } from 'vitest'
 import { matchLog, exposureVerdict } from './match'
-import { gaenDesign, dp3tLowCostDesign, dp3tUnlinkableDesign, type Published } from './design'
+import { gaenDesign, dp3tLowCostDesign, dp3tUnlinkableDesign, idKey, type Published } from './design'
 import { MATCH_TOLERANCE_INTERVALS, TEK_ROLLING_PERIOD } from '../crypto/gaen'
 import { EPOCHS_PER_DAY } from '../crypto/dp3t'
 import { fromHex, toHex } from '../crypto/bytes'
@@ -135,6 +135,26 @@ describe('CHECK D — matching the schedule vector', () => {
   it('expands a report to exactly 144 identifiers', async () => {
     const r = await matchLog(gaenDesign, [], published, DAYS)
     expect(r.expandedCount).toBe(144)
+  })
+})
+
+describe('idKey is the single point of comparison (invariant 5)', () => {
+  it('is all 32 hex digits, so equality of the key is equality of 16 bytes', () => {
+    expect(idKey(FIRST_RPI)).toHaveLength(32)
+    expect(idKey(FIRST_RPI)).toBe(GAEN_SCHEDULE.firstRpi)
+  })
+
+  it('separates two identifiers that differ only in their LAST byte', () => {
+    // The case a prefix comparison would merge. Mutation 9 truncates `idKey`,
+    // and this is the assertion that notices.
+    const other = Uint8Array.from(FIRST_RPI)
+    other[15] = (other[15] as number) ^ 0xff
+    expect(idKey(other)).not.toBe(idKey(FIRST_RPI))
+    expect(idKey(other).slice(0, 16)).toBe(idKey(FIRST_RPI).slice(0, 16))
+  })
+
+  it('refuses anything that is not 16 bytes rather than keying a prefix', () => {
+    expect(() => idKey(FIRST_RPI.subarray(0, 8))).toThrow(/16 bytes/)
   })
 })
 

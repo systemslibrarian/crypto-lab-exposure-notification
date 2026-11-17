@@ -33,7 +33,7 @@ import {
   dayIdentifiers,
   unlinkableIdentifier,
 } from '../crypto/dp3t'
-import { bytesEqual, toHex } from '../crypto/bytes'
+import { toHex } from '../crypto/bytes'
 import { randomBytes } from '../crypto/random'
 
 export type DesignId = 'gaen' | 'dp3t-lowcost' | 'dp3t-unlinkable'
@@ -304,9 +304,20 @@ export function designById(id: DesignId): Design {
   return found
 }
 
-/** Byte-for-byte equality of all 16 bytes. Invariant 5's first half. */
-export function identifierEquals(a: Uint8Array, b: Uint8Array): boolean {
-  return a.length === 16 && b.length === 16 && bytesEqual(a, b)
+/**
+ * The identity of an identifier: all 16 bytes, as 32 hex digits.
+ *
+ * This is invariant 5's first half and the ONLY place a comparison between two
+ * identifiers happens. `matchLog` and `group` both index on it, so equality of
+ * this string IS byte-for-byte equality of the whole identifier — which is why
+ * neither of them carries a second equality check. Truncate this and both
+ * stop comparing 16 bytes; mutation 9 does exactly that, and the matcher's and
+ * the observer's tests both go red.
+ */
+export function idKey(id: Uint8Array): string {
+  if (id.length !== 16) {
+    throw new RangeError(`an identifier is 16 bytes, got ${id.length}`)
+  }
+  return toHex(id)
 }
 
-export const idKey = (id: Uint8Array): string => toHex(id)

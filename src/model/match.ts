@@ -7,7 +7,7 @@
  * all. The signature is the enforcement: there is no `world` parameter to pass.
  */
 
-import { identifierEquals, idKey, type Design, type ExpandedId, type LogEntry, type Published } from './design'
+import { idKey, type Design, type ExpandedId, type LogEntry, type Published } from './design'
 
 export interface Match {
   entry: LogEntry
@@ -40,10 +40,18 @@ export async function matchLog(
 ): Promise<MatchResult> {
   const expanded = await design.expand(published, days)
 
-  // Index by the full 16 bytes. A bucket, not a single value: two different
-  // scheduled slots can legitimately hold the same identifier only by collision,
-  // but a relay puts the SAME identifier in a different slot, and both the match
-  // and the time rejection have to stay visible.
+  // Index by ALL SIXTEEN BYTES. `idKey` is the whole of invariant 5's first
+  // half: a map keyed on the full 32 hex digits is a byte-for-byte comparison,
+  // so there is no second check to perform afterwards and no partial match to
+  // fall through. The first draft of this function ALSO ran an
+  // `identifierEquals` filter over each bucket; mutation 9 proved that filter
+  // unreachable — truncating it to 8 bytes changed nothing, because the bucket
+  // lookup had already demanded all 16 — so it was deleted rather than left as
+  // code that looks like the check and is not. Mutation 9 now patches `idKey`.
+  //
+  // A bucket rather than a single value: a relay puts the SAME identifier in a
+  // different slot, and both the match and the time rejection must stay
+  // visible.
   const byBytes = new Map<string, ExpandedId[]>()
   for (const e of expanded) {
     const k = idKey(e.identifier)
@@ -64,8 +72,8 @@ export async function matchLog(
         `log entry is ${entry.identifier.length} bytes; a Rolling Proximity Identifier / EphID is 16`,
       )
     }
-    const candidates = byBytes.get(idKey(entry.identifier)) ?? []
-    const byteMatch = candidates.filter((c) => identifierEquals(entry.identifier, c.identifier))
+    // All 16 bytes equal — see the note on `idKey` above.
+    const byteMatch = byBytes.get(idKey(entry.identifier)) ?? []
     const timeOk = byteMatch.find((c) => design.withinTimeRule(entry, c))
     if (timeOk) {
       matches.push({ entry, expanded: timeOk })
