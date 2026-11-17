@@ -6,3 +6,8 @@ chat.md
 .DS_Store
 public/deployment.json
 .mutation-in-progress.json
+
+# The fleet standard lives in the catalog repo. A committed copy ages
+# silently into a second, wrong account of it - the same reason chat.md is
+# ignored. Keep it on disk, out of the repo (master template, section 4.1).
+_MASTER-TEMPLATE.md
