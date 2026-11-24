@@ -13,9 +13,9 @@ like a real encounter, and a reported key that links a day of sightings.
 
 ## What It Is
 
-A phone broadcasts short identifiers derived from a secret it keeps and never sends anywhere.
-Publishing that secret later lets everyone who heard an identifier recognise it locally, on
-their own device, without telling anybody the answer. That is the whole idea behind the
+A phone broadcasts short identifiers and keeps its encounter log on the device. If a user reports,
+the phone publishes the diagnosis material for the reporting period. Other phones download it
+and compare identifiers locally, without uploading their encounter logs or match results. That is the whole idea behind the
 exposure notification systems deployed in 2020, and this page runs it for real.
 
 Two families of design are built here, and the page runs them side by side on the same

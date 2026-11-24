@@ -260,7 +260,7 @@ export async function render(host: HTMLElement): Promise<void> {
     serverPanel.append(el('p', { class: 'server-knows', text: 'Nothing. No one has reported.' }))
   }
   serverPanel.append(
-    el('p', { text: 'It does not hold, and cannot derive:' }),
+    el('p', { text: 'From the report alone, the server does not hold or learn:' }),
     el('ul', { class: 'server-not', 'data-server-log-rows': '0' }, [
       el('li', { text: 'any phone’s log — the logs never leave the phones' }),
       el('li', { text: 'who was near whom, or where, or when' }),

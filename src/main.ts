@@ -62,11 +62,11 @@ function intro(): HTMLElement {
   return el('section', { class: 'card' }, [
     el('h2', { text: 'What this is' }),
     para(
-      'In 2020, phones started broadcasting short random-looking numbers over Bluetooth and keeping a list of the ones they heard. The numbers change every ten or fifteen minutes and mean nothing on their own. Each phone derives its own numbers from a secret it keeps and never sends anywhere.',
+      'In 2020, phones started broadcasting short random-looking numbers over Bluetooth and keeping a list of the ones they heard. The numbers change every ten or fifteen minutes and mean nothing on their own. Each phone keeps its encounter log locally and derives its own broadcasts from secret key material.',
       'lede',
     ),
     para(
-      'If you test positive, your phone can publish that secret. Everyone else’s phone downloads it, works out which numbers it produces, and checks its own list — on the phone, without telling anyone the answer. That is the whole idea, and it is genuinely clever: the server learns who reported, and never learns who met whom.',
+      'If you choose to report a positive test, your phone publishes diagnosis material for the reporting period. Other phones download it and compare identifiers against their own encounter logs. The reporting server in this model receives the published material. The logs and match results stay on the phones.',
       'lede',
     ),
     para(
