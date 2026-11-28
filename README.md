@@ -89,11 +89,7 @@ describes what any country's app actually did.
 
 ## When to Use It
 
-Use it to teach what a published-secret scheme does and does not buy: how publishing a key
-lets strangers recognise your past broadcasts without a server ever learning the social graph,
-and why that same step is what makes relay and post-report linkage unavoidable rather than
-oversights. It is a good companion to any discussion of why proximity cannot be carried by
-bytes alone.
+Use the lab to trace what each participant sees when a diagnosis key is published. Phones match past broadcasts locally and keep their encounter logs and match results. The simulated server receives the published keys. A real backend may also see upload authorization, timestamps or connection metadata, depending on the deployment. The radio exercise shows why receiving a valid identifier alone cannot establish physical proximity.
 
 **Do NOT read this page as an assessment of any national app.** It is not one. No deployed
 system is modelled here: the Apple/Google half follows the published specification, and the
@@ -127,9 +123,7 @@ is forged — the identifier is real, correctly derived, and belongs to the key 
 reported. The DP-3T white paper: *"Such an 'online' relay attack is unavoidable in proximity
 tracing systems based on passive Bluetooth advertisements."* Vaudenay's analysis gives the
 relay its own section and concludes that *"the only way to defeat this type of attack is to use
-some form of a distance-bounding protocol."* A *delayed* replay is a different attack and the
-time rules do stop it: Apple/Google allow a ±2-hour tolerance, DP-3T low-cost binds identifiers
-to a day, and the unlinkable design binds them to a single epoch.
+some form of a distance-bounding protocol."* A delay is rejected when it falls outside the acceptance window of the selected model. Within that window the time check can still pass. The Apple/Google model uses a ±2-hour tolerance, the DP-3T low-cost model binds identifiers to a day, and the unlinkable model binds them to a single epoch.
 
 **A reported key links a window of sightings.** The DP-3T white paper, on its own low-cost
 design: *"Given the seed SK_t of the first contagious day, the EphIDs of a COVID-19 positive
